@@ -22,7 +22,7 @@ import difftest._
 import difftest.gateway.GatewayConfig
 import difftest.common.DifftestPerf
 import difftest.validate.Validate._
-import difftest.util.PipelineConnect
+import difftest.util.{PipelineConnect, StoreHash}
 
 object Squash {
   def apply(
@@ -31,7 +31,8 @@ object Squash {
     fpgaEnable: Option[Bool] = None,
     fpgaMaxFused: Option[UInt] = None,
   ): DecoupledIO[MixedVec[Valid[DifftestBundle]]] = {
-    val squashInBits = Stamp(bundles.bits)
+    val stamped = Stamp(bundles.bits)
+    val squashInBits = if (config.isFPGA) StoreHash(stamped, bundles.fire) else stamped
     val squashIn = Wire(Decoupled(chiselTypeOf(squashInBits)))
     squashIn.bits := squashInBits
     squashIn.valid := bundles.valid
@@ -100,8 +101,9 @@ class Stamper(bundles: Seq[Valid[DifftestBundle]]) extends Module {
     sq.inheritFrom(st)
     val base = stamp(sq.bits.coreid)
     val inc = commitSum(sq.bits.coreid).last
-    // If no instr committed in the same cycle, store event will be checked in next commit
-    sq.bits.stamp := Mux(inc === 0.U, base + 1.U, base + inc)
+    // Decode count-minus-one only for events that may precede retirement.
+    val offset = Mux(sq.bits.preCommit, sq.bits.storeOffset, 0.U) + 1.U
+    sq.bits.stamp := Mux(inc === 0.U, base + offset, base + inc)
     sq
   }
 
@@ -150,7 +152,7 @@ class SquashEndpoint(bundles: Seq[Valid[DifftestBundle]], config: GatewayConfig)
       .zip(want_tick_vec)
       .filter(_._1.squashGroup.contains(g))
       .map { case (u, wt) =>
-        if (u.squashQueue) {
+        if (u.squashQueue && !u.isInstanceOf[DifftestHash]) {
           false.B
         } else {
           if (config.hasBuiltInPerf) DifftestPerf(s"SquashTick_${g}_${u.desiredCppName}", wt)

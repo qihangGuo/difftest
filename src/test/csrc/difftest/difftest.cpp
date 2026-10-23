@@ -15,6 +15,7 @@
 ***************************************************************************************/
 
 #include "difftest.h"
+#include "arch_event.h"
 #include "common.h"
 #include "difftrace.h"
 #include "dut.h"
@@ -310,6 +311,9 @@ Difftest::~Difftest() {
 #ifdef CONFIG_DIFFTEST_STOREEVENT
   delete store_checker;
 #endif // CONFIG_DIFFTEST_STOREEVENT
+#ifdef CONFIG_DIFFTEST_STOREHASHEVENT
+  delete store_hash_checker;
+#endif // CONFIG_DIFFTEST_STOREHASHEVENT
 #ifdef CONFIG_DIFFTEST_LOADEVENT
   for (int i = 0; i < CONFIG_DIFF_LOAD_WIDTH; i++) {
     delete load_checker[i];
@@ -341,13 +345,17 @@ void Difftest::init_checkers() {
   checkers.push_back(new FirstInstrCommitChecker([this]() -> DifftestInstrCommit & { return dut->commit[0]; }, state,
                                                  proxy, [this]() -> const DiffTestRegState & { return dut->regs; }));
 
-  // Each cycle is checked for an store event, and recorded in queue.
-  // It is checked every time an instruction is committed and queue has content.
+  // Record stores each cycle; checking waits for their stamps or the complete non-squash batch.
 #ifdef CONFIG_DIFFTEST_STOREEVENT
   for (int i = 0; i < CONFIG_DIFF_STORE_WIDTH; i++) {
     checkers.push_back(new StoreRecorder([this, i]() -> DifftestStoreEvent & { return dut->store[i]; }, state, proxy));
   }
 #endif
+
+#ifdef CONFIG_DIFFTEST_STOREHASHEVENT
+  checkers.push_back(
+      new StoreHashRecorder([this]() -> DifftestStoreHashEvent & { return dut->store_hash; }, state, proxy));
+#endif // CONFIG_DIFFTEST_STOREHASHEVENT
 
 #ifdef CONFIG_DIFFTEST_LOADEVENT
   for (int i = 0; i < CONFIG_DIFF_LOAD_WIDTH; i++) {
@@ -454,6 +462,12 @@ void Difftest::init_checkers() {
     checkers.push_back(
         new AmuExecRecorder([this, i]() -> DifftestAmuFinishEvent & { return dut->amu_finish[i]; }, state, proxy));
   }
+#ifdef CONFIG_DIFFTEST_AMUHASHEVENT
+  for (int i = 0; i < CONFIG_DIFF_AMU_HASH_FINISH_WIDTH; ++i) {
+    checkers.push_back(new AmuHashExecRecorder(
+        [this, i]() -> DifftestAmuHashEvent & { return dut->amu_hash_finish[i]; }, state, proxy));
+  }
+#endif
   checkers.push_back(new AmuExecChecker(state, proxy));
 #endif // CONFIG_DIFFTEST_AMUCTRLEVENT
 
@@ -473,8 +487,14 @@ void Difftest::init_checkers() {
 #endif // CONFIG_DIFFTEST_LOADEVENT && CONFIG_DIFFTEST_SQUASH
 #ifdef CONFIG_DIFFTEST_STOREEVENT
   store_checker = new StoreChecker(state, proxy);
+#ifdef CONFIG_DIFFTEST_SQUASH
   inst_op_checkers.push_back(store_checker);
+#endif // CONFIG_DIFFTEST_SQUASH
 #endif // CONFIG_DIFFTEST_STOREEVENT
+#ifdef CONFIG_DIFFTEST_STOREHASHEVENT
+  store_hash_checker = new StoreHashChecker(state, proxy);
+  inst_op_checkers.push_back(store_hash_checker);
+#endif // CONFIG_DIFFTEST_STOREHASHEVENT
 #ifdef CONFIG_DIFFTEST_MSYNCEVENT
   inst_op_checkers.push_back(new MsyncChecker(state, proxy));
 #endif // CONFIG_DIFFTEST_MSYNCEVENT
@@ -659,30 +679,42 @@ inline int Difftest::check_all() {
 #endif
 
   num_commit = 0; // reset num_commit this cycle to 0
-  if (dut->event.valid) {
-    if (int ret = arch_event_checker->step()) {
-      return ret;
-    }
-    dut->commit[0].valid = 0;
-  } else {
-#if !defined(BASIC_DIFFTEST_ONLY) && !defined(CONFIG_DIFFTEST_SQUASH)
-    if (dut->commit[0].valid) {
-      dut_commit_batch_pc = dut->commit[0].pc;
-      ref_commit_batch_pc = proxy->state.pc;
-      if (dut_commit_batch_pc != ref_commit_batch_pc) {
-        pc_mismatch = true;
+  for (int i = 0; i <= CONFIG_DIFF_COMMIT_WIDTH; i++) {
+    if (dut->event.valid && i == arch_event_commit_position(dut->event, 0)) {
+      if (int ret = arch_event_checker->step()) {
+        return ret;
       }
-    }
-#endif
-    for (int i = 0; i < CONFIG_DIFF_COMMIT_WIDTH; i++) {
-      if (dut->commit[i].valid) {
-        num_commit += 1 + dut->commit[i].nFused;
-        if (int ret = instr_commit_checker[i]->step()) {
-          return ret;
+      if (i < CONFIG_DIFF_COMMIT_WIDTH) {
+        dut->commit[i].valid = 0;
+      }
+      break;
+    } else if (i < CONFIG_DIFF_COMMIT_WIDTH && dut->commit[i].valid) {
+#if !defined(BASIC_DIFFTEST_ONLY) && !defined(CONFIG_DIFFTEST_SQUASH)
+      if (i == 0) {
+        dut_commit_batch_pc = dut->commit[i].pc;
+        ref_commit_batch_pc = proxy->state.pc;
+        if (dut_commit_batch_pc != ref_commit_batch_pc) {
+          pc_mismatch = true;
         }
+      }
+#endif
+      num_commit += 1 + dut->commit[i].nFused;
+      if (int ret = instr_commit_checker[i]->step()) {
+        return ret;
       }
     }
   }
+
+#if defined(CONFIG_DIFFTEST_STOREEVENT) && !defined(CONFIG_DIFFTEST_SQUASH)
+  // A preCommit store can arrive before its own slot executes. Wait for the
+  // entire batch, including any fused instructions, when stamps are unavailable.
+  // An empty batch may precede the store's retirement, so retain its queue.
+  if (num_commit > 0) {
+    if (int ret = store_checker->step()) {
+      return ret;
+    }
+  }
+#endif // CONFIG_DIFFTEST_STOREEVENT && !CONFIG_DIFFTEST_SQUASH
 
   if (int ret = update_delayed_writeback()) {
     return ret;

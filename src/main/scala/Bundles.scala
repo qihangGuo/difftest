@@ -53,6 +53,8 @@ private[difftest] class DeltaElem(elemWidth: Int) extends DifftestBaseBundle {
 }
 
 class ArchEvent extends DifftestBaseBundle with HasValid {
+  // A latter event follows the surviving former's ordinary commit.
+  val isLatter = Bool()
   val interrupt = UInt(32.W)
   val exception = UInt(32.W)
   val exceptionPC = UInt(64.W)
@@ -324,8 +326,21 @@ class StoreEvent extends DifftestBaseBundle with HasValid {
   val vecNeedSplit = Bool()
   val eew = UInt(8.W)
   val offset = UInt(16.W)
+  // Entry instruction count minus one. Older DUT producers may omit this connection;
+  // DifftestModule supplies zero, which retains the legacy fallback.
+  val storeOffset = UInt(8.W)
+  val preCommit = Bool()
   val pc = UInt(64.W)
   val robidx = UInt(10.W)
+}
+
+// Internal bundle produced from StoreEvent by the DiffTest gateway.
+private[difftest] class StoreHashEvent extends DifftestBaseBundle with HasValid {
+  val hash_lo = UInt(64.W)
+  val hash_hi = UInt(64.W)
+  val record_count = UInt(16.W)
+  val instr_begin = UInt(64.W)
+  val instr_end = UInt(64.W)
 }
 
 class LoadEvent extends DifftestBaseBundle with HasValid {
@@ -490,6 +505,16 @@ class AmuFinishEvent(val nBanks: Int = 8, val wordsPerBank: Int = 4) extends Dif
   val data = Vec(nBanks * wordsPerBank, UInt(64.W))
   val bankMask = Vec(nBanks, UInt((wordsPerBank * 8).W))
   val finish = Bool()
+}
+
+// Compact completion record used by load/zero instructions.  The full
+// AmuFinishEvent is intentionally retained for MMA, whose result is consumed
+// by the asynchronous numerical verifier.
+class AmuHashFinishEvent extends DifftestBaseBundle with HasValid {
+  val pc = UInt(64.W)
+  val hashLo = UInt(64.W)
+  val hashHi = UInt(64.W)
+  val byteCount = UInt(32.W)
 }
 
 class MsyncEvent extends DifftestBaseBundle with HasValid {

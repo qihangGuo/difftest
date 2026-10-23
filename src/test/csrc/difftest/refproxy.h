@@ -155,6 +155,8 @@ public:
   f(ref_evu_reg_valid, difftest_evu_reg_valid, uint32_t, )                                                 \
   f(ref_evu_drain, difftest_evu_drain, int, uint8_t, bool, uint8_t, uint64_t, uint64_t, bool)              \
   f(ref_evu_get_csr, difftest_evu_get_csr, int, void*, size_t)                                              \
+  f(ref_store_commit_hash, difftest_store_commit_hash, int, uint64_t, uint64_t, uint64_t,                \
+    uint64_t, uint64_t)                                                                                  \
   f(ref_init_v2, difftest_init_v2, void, unsigned)                                                          \
   f(load_flash_bin, difftest_load_flash, void, const char*, size_t)                                         \
   f(load_flash_bin_v2, difftest_load_flash_v2, void, const uint8_t*, size_t)                                \
@@ -184,6 +186,7 @@ public:
   f(ref_msync_event, difftest_msync_event, int, void*)                                                      \
   f(ref_get_msync_event_other_info, difftest_get_msync_event_other_info, void, void*)                       \
   f(ref_amu_exec, difftest_amu_exec, int, void*, void*)                                                     \
+  f(ref_amu_exec_hash, difftest_amu_exec_hash, int, void*, void*)                                           \
   f(ref_amu_lazy, difftest_amu_lazy, void, void*, void*, void*, void*, void*)
 #define RefFunc(func, ret, ...) ret func(__VA_ARGS__)
 #define DeclRefFunc(this_func, dummy, ret, ...) RefFunc((*this_func), ret, __VA_ARGS__);
@@ -443,6 +446,15 @@ public:
     }
   }
 
+  inline int store_commit_hash(uint64_t count, uint64_t hash_lo, uint64_t hash_hi, uint64_t instr_begin,
+                               uint64_t instr_end) {
+    if (ref_store_commit_hash) {
+      return ref_store_commit_hash(count, hash_lo, hash_hi, instr_begin, instr_end);
+    }
+    report_unsupported_ref("store commit hash checking");
+    return 1;
+  }
+
   inline int get_amu_ctrl_event(struct AmuCtrlEvent *info) {
     if (ref_amu_ctrl) {
       return ref_amu_ctrl(info);
@@ -477,7 +489,7 @@ public:
     }
   }
 
-  inline int get_amu_exec(struct AmuCtrlEvent *amu_ctrl, void *matrix) {
+  inline int exec_amu(struct AmuCtrlEvent *amu_ctrl, void *matrix = nullptr) {
     if (ref_amu_exec) {
       return ref_amu_exec(amu_ctrl, matrix);
     } else {
@@ -486,7 +498,16 @@ public:
     }
   }
 
-  inline int get_amu_lazy(struct AmuCtrlEvent *amu_ctrl, void *res, void *src1, void *src2, void *src3) {
+  inline int exec_amu_hash(struct AmuCtrlEvent *amu_ctrl, struct MatrixHash128 *result) {
+    if (ref_amu_exec_hash) {
+      return ref_amu_exec_hash(amu_ctrl, result);
+    } else {
+      report_unsupported_ref("AME result hash");
+      return 1;
+    }
+  }
+
+  inline int exec_amu_lazy(struct AmuCtrlEvent *amu_ctrl, void *res, void *src1, void *src2, void *src3) {
     if (ref_amu_lazy) {
       ref_amu_lazy(amu_ctrl, res, src1, src2, src3);
       return 0;

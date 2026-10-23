@@ -472,6 +472,27 @@ private:
 };
 #endif // CONFIG_DIFFTEST_STOREEVENT
 
+#ifdef CONFIG_DIFFTEST_STOREHASHEVENT
+class StoreHashRecorder : public ProbeChecker<DifftestStoreHashEvent> {
+public:
+  StoreHashRecorder(GetProbeFn get_probe, DiffState *state, RefProxy *proxy)
+      : ProbeChecker<DifftestStoreHashEvent>(get_probe, state, proxy) {}
+
+private:
+  bool get_valid(const DifftestStoreHashEvent &probe) override;
+  void clear_valid(DifftestStoreHashEvent &probe) override;
+  int check(const DifftestStoreHashEvent &probe) override;
+};
+
+class StoreHashChecker : public SimpleChecker {
+public:
+  StoreHashChecker(DiffState *state, RefProxy *proxy) : SimpleChecker(state, proxy) {}
+
+private:
+  int check() override;
+};
+#endif // CONFIG_DIFFTEST_STOREHASHEVENT
+
 #ifdef CONFIG_DIFFTEST_AMUCTRLEVENT
 class AmuCtrlRecorder : public ProbeChecker<DifftestAmuCtrlEvent> {
 public:
@@ -498,7 +519,23 @@ public:
   bool get_valid(const DifftestAmuFinishEvent &probe) override;
   void clear_valid(DifftestAmuFinishEvent &probe) override;
   int check(const DifftestAmuFinishEvent &probe) override;
+
+private:
+  void record_writeback(DiffState::AmeInstRobEntry &entry, const DifftestAmuFinishEvent &probe);
+  int execute_mrelease(const DifftestAmuCtrlEvent &event, const DifftestAmuFinishEvent &probe);
 };
+
+#ifdef CONFIG_DIFFTEST_AMUHASHEVENT
+class AmuHashExecRecorder : public ProbeChecker<DifftestAmuHashEvent> {
+public:
+  AmuHashExecRecorder(GetProbeFn get_probe, DiffState *state, RefProxy *proxy)
+      : ProbeChecker<DifftestAmuHashEvent>(get_probe, state, proxy) {}
+
+  bool get_valid(const DifftestAmuHashEvent &probe) override;
+  void clear_valid(DifftestAmuHashEvent &probe) override;
+  int check(const DifftestAmuHashEvent &probe) override;
+};
+#endif
 
 class AmuExecChecker : public DiffTestChecker {
 public:
