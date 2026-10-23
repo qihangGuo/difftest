@@ -286,7 +286,7 @@ class DiffTrapEvent extends TrapEvent with DifftestBundle {
 class DiffCSRState extends CSRState with DifftestBundle {
   override val desiredCppName: String = "csr"
   override val desiredRegOffset: Option[Int] = Some(2)
-  override val updateDependency: Seq[String] = Seq("commit", "event")
+  override val updateDependency: Seq[String] = Seq("commit", "event", "evu_completion", "evu_drain")
   override val supportsDelta: Boolean = true
 }
 
@@ -424,6 +424,39 @@ class DiffMcfgState extends McfgState with DifftestBundle {
 class DiffSbufferEvent extends SbufferEvent with DifftestBundle with DifftestWithIndex {
   override val desiredCppName: String = "sbuffer"
   override val squashGroup: Seq[String] = Seq("GOLDENMEM")
+}
+
+class DiffEvuStoreEvent extends EvuStoreEvent with DifftestBundle {
+  override val desiredCppName: String = "evu_store"
+  override val squashGroup: Seq[String] = Seq("REF", "GOLDENMEM", "EVU")
+}
+
+class DiffEvuCompletionEvent extends EvuCompletionEvent with DifftestBundle {
+  override val desiredCppName: String = "evu_completion"
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
+}
+
+class DiffEvuMatrixEvent(words: Int) extends EvuMatrixEvent(words) with DifftestBundle {
+  override val desiredCppName: String = "evu_matrix"
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
+  override def classArgs: Map[String, Any] = Map("words" -> words)
+}
+
+class DiffEvuVrfState(words: Int) extends EvuVrfState(words) with DifftestBundle with DifftestWithIndex {
+  override val desiredCppName: String = "evu_vrf"
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
+  override def classArgs: Map[String, Any] = Map("words" -> words)
+}
+
+class DiffEvuDrainEvent extends EvuDrainEvent with DifftestBundle {
+  override val desiredCppName: String = "evu_drain"
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
+}
+
+class DiffEvuCSRState extends EvuCSRState with DifftestBundle {
+  override val desiredCppName: String = "evu_csr"
+  override val updateDependency: Seq[String] = Seq("commit", "event", "evu_completion", "evu_drain")
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
 }
 
 class DiffMatrixStoreEvent extends MatrixStoreEvent with DifftestBundle with DifftestWithIndex {

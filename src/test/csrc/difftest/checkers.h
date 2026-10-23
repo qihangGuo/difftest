@@ -531,4 +531,18 @@ public:
 };
 #endif // CONFIG_DIFFTEST_MSYNCEVENT
 
+#if defined(CONFIG_DIFFTEST_EVUSTOREEVENT) && defined(CONFIG_DIFFTEST_EVUCOMPLETIONEVENT)
+class EvuChecker : public DiffTestChecker {
+public:
+  EvuChecker(DiffState *state, RefProxy *proxy, std::function<DiffTestState &()> get_dut);
+  ~EvuChecker() override;
+  int check_csr();
+  int do_step() override;
+
+private:
+  std::function<DiffTestState &()> get_dut;
+  uint64_t stores = 0, completions = 0, matrix_beats = 0;
+};
+#endif
+
 #endif // __DIFFTEST_CHECKER_H__

@@ -191,6 +191,9 @@ protected:
   uint64_t dut_commit_batch_pc = 0;
 
   std::vector<DiffTestChecker *> checkers;
+#if defined(CONFIG_DIFFTEST_EVUSTOREEVENT) && defined(CONFIG_DIFFTEST_EVUCOMPLETIONEVENT)
+  EvuChecker *evu_checker = nullptr;
+#endif
   ArchEventChecker *arch_event_checker = nullptr;
   InstrCommitChecker *instr_commit_checker[CONFIG_DIFF_COMMIT_WIDTH] = {nullptr};
 #ifdef CONFIG_DIFFTEST_STOREEVENT

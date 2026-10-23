@@ -332,6 +332,10 @@ Difftest::~Difftest() {
 }
 
 void Difftest::init_checkers() {
+#if defined(CONFIG_DIFFTEST_EVUSTOREEVENT) && defined(CONFIG_DIFFTEST_EVUCOMPLETIONEVENT)
+  evu_checker = new EvuChecker(state, proxy, [this]() -> DiffTestState & { return *dut; });
+  checkers.push_back(evu_checker);
+#endif
   checkers.push_back(new TimeoutChecker([this]() -> DifftestTrapEvent & { return dut->trap; }, state, proxy));
 
   checkers.push_back(new FirstInstrCommitChecker([this]() -> DifftestInstrCommit & { return dut->commit[0]; }, state,
@@ -520,6 +524,12 @@ bool Difftest::in_replay_range() {
 }
 
 void Difftest::replay_snapshot() {
+#if defined(CONFIG_DIFFTEST_EVUSTOREEVENT) && defined(CONFIG_DIFFTEST_EVUCOMPLETIONEVENT)
+  uint64_t evu_context[21] = {};
+  Assert(proxy->evu_get_csr(evu_context, sizeof(evu_context)) == 0 &&
+           evu_context[7] == 0 && proxy->evu_reg_valid() == 0 && proxy->evu_pending() == 0,
+         "EVU context/VRF/job replay is not supported by the legacy snapshot format");
+#endif
   state->replay_snapshot();
   memcpy(proxy_reg_ss, &proxy->state, sizeof(ref_state_t));
   proxy->ref_csrcpy(squash_csr_buf, REF_TO_DUT);
@@ -678,6 +688,11 @@ inline int Difftest::check_all() {
     return ret;
   }
 
+#if defined(CONFIG_DIFFTEST_EVUSTOREEVENT) && defined(CONFIG_DIFFTEST_EVUCOMPLETIONEVENT)
+  if (state->has_progress) {
+    if (int ret = evu_checker->check_csr()) return ret;
+  }
+#endif
   if (!state->has_progress) {
     return DiffTestChecker::STATE_OK;
   }

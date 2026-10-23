@@ -146,6 +146,15 @@ public:
   REF_DEBUG_MODE(f)
 
 #define REF_OPTIONAL(f)                                                                                     \
+  f(ref_evu_set_async, difftest_evu_set_async, void, bool)                                                 \
+  f(ref_evu_store, difftest_evu_store, int, uint64_t, const void*, uint64_t)                               \
+  f(ref_evu_matrix, difftest_evu_matrix, int, uint32_t, uint32_t, const void*, size_t, uint64_t, uint8_t, bool) \
+  f(ref_evu_complete, difftest_evu_complete_v2, int, uint64_t, uint32_t, uint8_t, bool, uint8_t, bool)                \
+  f(ref_evu_pending, difftest_evu_pending, int, )                                                         \
+  f(ref_evu_get_reg, difftest_evu_get_reg, int, uint32_t, void*, size_t)                                    \
+  f(ref_evu_reg_valid, difftest_evu_reg_valid, uint32_t, )                                                 \
+  f(ref_evu_drain, difftest_evu_drain, int, uint8_t, bool, uint8_t, uint64_t, uint64_t, bool)              \
+  f(ref_evu_get_csr, difftest_evu_get_csr, int, void*, size_t)                                              \
   f(ref_init_v2, difftest_init_v2, void, unsigned)                                                          \
   f(load_flash_bin, difftest_load_flash, void, const char*, size_t)                                         \
   f(load_flash_bin_v2, difftest_load_flash_v2, void, const uint8_t*, size_t)                                \
@@ -187,6 +196,31 @@ public:
 
   AbstractRefProxy(int coreid, size_t ram_size, const char *env, const char *file_path);
   ~AbstractRefProxy();
+
+  bool evu_available() const {
+    return ref_evu_set_async && ref_evu_store && ref_evu_complete && ref_evu_pending &&
+           ref_evu_get_reg && ref_evu_reg_valid && ref_evu_get_csr && ref_evu_matrix && ref_evu_drain;
+  }
+  void evu_set_async(bool enable) { ref_evu_set_async(enable); }
+  int evu_store(uint64_t addr, const void *data, uint64_t mask) {
+    return ref_evu_store(addr, data, mask);
+  }
+  int evu_complete(uint64_t pc, uint32_t instr, uint8_t flags, bool exception, uint8_t cause, bool vxsat) {
+    return ref_evu_complete(pc, instr, flags, exception, cause, vxsat);
+  }
+  int evu_pending() const { return ref_evu_pending(); }
+  int evu_matrix(uint32_t row, uint32_t col, const void *data, size_t bytes,
+                 uint64_t mask, uint8_t flags, bool last) {
+    return ref_evu_matrix(row, col, data, bytes, mask, flags, last);
+  }
+  int evu_get_reg(uint32_t reg, void *data, size_t bytes) {
+    return ref_evu_get_reg(reg, data, bytes);
+  }
+  uint32_t evu_reg_valid() const { return ref_evu_reg_valid(); }
+  int evu_drain(uint8_t flags, bool exception, uint8_t cause, uint64_t pc, uint64_t tval, bool valid) {
+    return ref_evu_drain(flags, exception, cause, pc, tval, valid);
+  }
+  int evu_get_csr(void *data, size_t bytes) { return ref_evu_get_csr(data, bytes); }
 
 protected:
   REF_OPTIONAL(DeclRefFunc)

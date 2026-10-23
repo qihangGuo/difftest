@@ -258,6 +258,47 @@ class SbufferEvent extends DifftestBaseBundle with HasValid {
   val mask = UInt(64.W)
 }
 
+class EvuStoreEvent extends DifftestBaseBundle with HasValid {
+  val addr = UInt(64.W)
+  val data = Vec(64, UInt(8.W))
+  val mask = UInt(64.W)
+}
+
+class EvuCompletionEvent extends DifftestBaseBundle with HasValid {
+  val vxsat = Bool()
+  val pc = UInt(64.W)
+  val instr = UInt(32.W)
+  val fflags = UInt(5.W)
+  val exception = Bool()
+  val cause = UInt(4.W)
+}
+
+class EvuDrainEvent extends DifftestBaseBundle with HasValid {
+  val fflags = UInt(5.W)
+  val exception = Bool()
+  val cause = UInt(4.W)
+  val pc = UInt(64.W)
+  val tval = UInt(64.W)
+  val tvalValid = Bool()
+}
+
+class EvuMatrixEvent(val words: Int) extends DifftestBaseBundle with HasValid {
+  val row = UInt(32.W)
+  val col = UInt(32.W)
+  val data = Vec(words, UInt(64.W))
+  val mask = UInt(64.W)
+  val fflags = UInt(5.W)
+  val last = Bool()
+}
+
+class EvuVrfState(val words: Int) extends DifftestBaseBundle with HasValid {
+  val value = Vec(words, UInt(64.W))
+}
+
+class EvuCSRState extends DifftestBaseBundle with HasValid {
+  val value = Vec(21, UInt(64.W))
+}
+
 class MatrixStoreEvent extends DifftestBaseBundle with HasValid {
   val reqValid = Bool()
   val reqEncodedSourceId = UInt(64.W)
