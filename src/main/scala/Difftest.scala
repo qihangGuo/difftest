@@ -706,6 +706,15 @@ object DifftestModule {
       difftest := DontCare
       difftest.bits.getValidOption.foreach(_ := false.B)
     }
+    // Legacy producers do not provide these newer ordering fields. Explicit
+    // defaults retain their event timing; producers may override them below.
+    difftest match {
+      case event: ArchEvent => event.isLatter := false.B
+      case event: StoreEvent =>
+        event.preCommit := false.B
+        event.storeOffset := 0.U
+      case _ =>
+    }
     difftest
   }
 
