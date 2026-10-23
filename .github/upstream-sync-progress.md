@@ -4,9 +4,9 @@
 | --- | --- |
 | Source archives/Git bundles verified | PASS |
 | Independent integration snapshots | PASS |
-| Fetch and merge | Merged; validation in progress |
+| Fetch and merge | PASS |
 | Source/native validation | PASS |
-| Import to original workspaces | Pending |
+| Import to original workspaces | PASS |
 
 Backup: /tmp/xsai-evu-upstream-sync-20261023-232704
 Original files, refs, indexes and binary diffs are preserved.
@@ -31,3 +31,12 @@ First make comp: PASS (main and test Scala source compilation only). Recompile r
 - Difftest C++ `-fsyntax-only`: PASS for EVU checker, main checker, reference proxy using an explicitly augmented temporary ABI header. This is not generated ABI validation.
 - Original source SHA256 manifest: unchanged in all six repositories before import.
 Full regenerated RTL/EMU Difftest, asynchronous CDC simulations and performance are server validation, per user restriction.
+
+## Delivery to original workspaces
+- Imported all six repositories onto `sync/upstream-20261023`, preserving the previous feature refs and all local snapshot ancestry.
+- Original uncommitted source is additionally saved in per-repository Git stashes; original indexes, source hashes and archives remain in the backup directory. One root intent-to-add entry prevented git stash; its exact original index was archived, the entry was staged without changing its file, then stash succeeded.
+- In the original working directories: `make comp`, NEMU reference defconfig/build, native compute, prior trace replay, matrix, MMU and official ArchEvent ABI regression all PASS.
+- Confirmed all six histories contain the pre-sync HEAD, local snapshot and upstream target. No unresolved conflicts; original feature refs remain unchanged.
+- Source/index backups and import/stash identifiers: `/tmp/xsai-evu-upstream-sync-20261023-232704/import-report.json` and `manifest.json`.
+- nexus-am and the other XSAI worktree retain their prior HEAD and exact Git status. No source outside XSAI_external_vector/NEMU was changed.
+- No push, remote server operation, local EMU, RTL/Verilog elaboration or guest binary generation.
