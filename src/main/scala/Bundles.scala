@@ -266,6 +266,14 @@ class EvuStoreEvent extends DifftestBaseBundle with HasValid {
   val mask = UInt(64.W)
 }
 
+class EvuCuteWriteEvent extends DifftestBaseBundle with HasValid {
+  val matrixReg = UInt(32.W)
+  val bank = UInt(32.W)
+  val entry = UInt(32.W)
+  val data = Vec(4, UInt(64.W))
+  val mask = UInt(64.W)
+}
+
 class EvuCompletionEvent extends DifftestBaseBundle with HasValid {
   val vxsat = Bool()
   val pc = UInt(64.W)

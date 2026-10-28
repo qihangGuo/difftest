@@ -436,6 +436,11 @@ class DiffEvuStoreEvent extends EvuStoreEvent with DifftestBundle {
   override val squashGroup: Seq[String] = Seq("REF", "GOLDENMEM", "EVU")
 }
 
+class DiffEvuCuteWriteEvent extends EvuCuteWriteEvent with DifftestBundle {
+  override val desiredCppName: String = "evu_cute_write"
+  override val squashGroup: Seq[String] = Seq("REF", "EVU")
+}
+
 class DiffEvuCompletionEvent extends EvuCompletionEvent with DifftestBundle {
   override val desiredCppName: String = "evu_completion"
   override val squashGroup: Seq[String] = Seq("REF", "EVU")

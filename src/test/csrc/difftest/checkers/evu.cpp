@@ -5,13 +5,13 @@
 EvuChecker::EvuChecker(DiffState *state, RefProxy *proxy, std::function<DiffTestState &()> get_dut)
     : DiffTestChecker(state, proxy), get_dut(std::move(get_dut)) {
   Assert(proxy->evu_available(),
-         "EVU difftest requires an updated CONFIG_CUSTOM_EVU=y reference exporting difftest_evu_matrix");
+         "EVU difftest requires an updated CONFIG_CUSTOM_EVU=y reference exporting difftest_evu_matrix and difftest_evu_cute_write");
   proxy->evu_set_async(true);
 }
 
 EvuChecker::~EvuChecker() {
-  Info("[DiffTest][EVU] core=%d checked_stores=%lu checked_completions=%lu checked_matrix_beats=%lu pending=%d\n",
-       state->coreid, stores, completions, matrix_beats, proxy->evu_pending());
+  Info("[DiffTest][EVU] core=%d checked_stores=%lu checked_completions=%lu checked_matrix_beats=%lu checked_cute_writes=%lu pending=%d\n",
+       state->coreid, stores, completions, matrix_beats, cute_writes, proxy->evu_pending());
 }
 
 int EvuChecker::do_step() {
@@ -42,6 +42,19 @@ int EvuChecker::do_step() {
     store.valid = 0;
     ++stores;
   }
+#ifdef CONFIG_DIFFTEST_EVUCUTEWRITEEVENT
+  auto &cute = dut.evu_cute_write;
+  if (cute.valid) {
+    if (proxy->evu_cute_write(cute.matrixReg, cute.bank, cute.entry,
+                              cute.data, sizeof(cute.data), cute.mask)) {
+      eprintf("[DiffTest][EVU] CUTE input mismatch core=%d cycle=%lu reg=%u bank=%u entry=%u\n",
+              state->coreid, state->cycle_count, cute.matrixReg, cute.bank, cute.entry);
+      return STATE_DIFF;
+    }
+    cute.valid = 0;
+    ++cute_writes;
+  }
+#endif
   auto &completion = dut.evu_completion;
   if (completion.valid) {
     if (proxy->evu_complete(completion.pc, completion.instr, completion.fflags,

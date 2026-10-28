@@ -150,6 +150,7 @@ public:
   f(ref_evu_store, difftest_evu_store, int, uint64_t, const void*, uint64_t)                               \
   f(ref_evu_matrix, difftest_evu_matrix, int, uint32_t, uint32_t, const void*, size_t, uint64_t, uint8_t, bool) \
   f(ref_evu_complete, difftest_evu_complete_v2, int, uint64_t, uint32_t, uint8_t, bool, uint8_t, bool)                \
+  f(ref_evu_cute_write, difftest_evu_cute_write, int, uint32_t, uint32_t, uint32_t, const void*, size_t, uint64_t) \
   f(ref_evu_pending, difftest_evu_pending, int, )                                                         \
   f(ref_evu_get_reg, difftest_evu_get_reg, int, uint32_t, void*, size_t)                                    \
   f(ref_evu_reg_valid, difftest_evu_reg_valid, uint32_t, )                                                 \
@@ -202,7 +203,7 @@ public:
 
   bool evu_available() const {
     return ref_evu_set_async && ref_evu_store && ref_evu_complete && ref_evu_pending &&
-           ref_evu_get_reg && ref_evu_reg_valid && ref_evu_get_csr && ref_evu_matrix && ref_evu_drain;
+           ref_evu_get_reg && ref_evu_reg_valid && ref_evu_get_csr && ref_evu_matrix && ref_evu_drain && ref_evu_cute_write;
   }
   void evu_set_async(bool enable) { ref_evu_set_async(enable); }
   int evu_store(uint64_t addr, const void *data, uint64_t mask) {
@@ -210,6 +211,9 @@ public:
   }
   int evu_complete(uint64_t pc, uint32_t instr, uint8_t flags, bool exception, uint8_t cause, bool vxsat) {
     return ref_evu_complete(pc, instr, flags, exception, cause, vxsat);
+  }
+  int evu_cute_write(uint32_t reg, uint32_t bank, uint32_t entry, const void *data, size_t bytes, uint64_t mask) {
+    return ref_evu_cute_write(reg, bank, entry, data, bytes, mask);
   }
   int evu_pending() const { return ref_evu_pending(); }
   int evu_matrix(uint32_t row, uint32_t col, const void *data, size_t bytes,

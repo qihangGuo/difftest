@@ -578,7 +578,7 @@ public:
 
 private:
   std::function<DiffTestState &()> get_dut;
-  uint64_t stores = 0, completions = 0, matrix_beats = 0;
+  uint64_t stores = 0, completions = 0, matrix_beats = 0, cute_writes = 0;
 };
 #endif
 
